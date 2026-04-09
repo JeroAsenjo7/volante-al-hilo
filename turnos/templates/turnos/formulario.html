@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block titulo %}{% if form.instance.pk %}Editar turno{% else %}Nuevo turno{% endif %}{% endblock %}
+{% block fab %}{% endblock %}
+
+{% block contenido %}
+<div class="form-wrap">
+    <div class="form-header">
+        <h1>{% if form.instance.pk %}Editar turno{% else %}Nuevo turno{% endif %}</h1>
+    </div>
+    <div class="form-body">
+        <form method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <ul class="form-errors">
+                {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            <div class="field">
+                <label>Fecha</label>
+                {{ form.fecha }}
+                {% if form.fecha.errors %}<ul class="errorlist">{% for e in form.fecha.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="field">
+                <label>Hora</label>
+                {{ form.hora }}
+                {% if form.hora.errors %}<ul class="errorlist">{% for e in form.hora.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="field">
+                <label>Auto</label>
+                {{ form.auto }}
+                {% if form.auto.errors %}<ul class="errorlist">{% for e in form.auto.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="field">
+                <label>Cliente de</label>
+                {{ form.cliente_de }}
+            </div>
+            <div class="field">
+                <label>Precio</label>
+                {{ form.precio }}
+            </div>
+            <div class="field">
+                <label>Hilo</label>
+                {{ form.hilo }}
+            </div>
+
+            <button type="submit" class="btn-submit">Guardar</button>
+        </form>
+        <a href="{% url 'lista_turnos' %}" class="btn-back">Cancelar</a>
+    </div>
+</div>
+{% endblock %}

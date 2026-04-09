@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block titulo %}Stock y Estadísticas{% endblock %}
+{% block fab %}{% endblock %}
+
+{% block contenido %}
+
+<!-- STOCK -->
+<div class="week-block">
+    <div class="week-title">Stock actual</div>
+
+    <div class="turno-row" style="justify-content:space-between;">
+        <span
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Hilo
+            Rojo</span>
+        <span style="font-size:22px;font-weight:600;color:var(--primary);">{{ rojo.cantidad }}</span>
+    </div>
+    <div class="turno-row" style="justify-content:space-between;">
+        <span
+            style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Hilo
+            Negro</span>
+        <span style="font-size:22px;font-weight:600;color:var(--text);">{{ negro.cantidad }}</span>
+    </div>
+    <div class="total-semana">Total en stock: {{ total_stock }}</div>
+</div>
+
+<!-- MODIFICAR STOCK -->
+<div class="week-block">
+    <div class="week-title">Modificar stock</div>
+    <div class="form-wrap" style="margin-top:12px;">
+        <div class="form-body">
+            <form method="post">
+                {% csrf_token %}
+                {% if messages %}
+                {% for message in messages %}
+                <div class="form-errors" {% if message.tags == 'success' %}style="background:#f0fdf4;border-color:#bbf7d0;"{% endif %}>
+                    <li>{{ message }}</li>
+                </div>
+                {% endfor %}
+                {% endif %}
+                <div class="field">
+                    <label>Tipo de hilo</label>
+                    <select name="tipo">
+                        <option value="rojo">Rojo</option>
+                        <option value="negro">Negro</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Cantidad</label>
+                    <input type="number" name="cantidad" min="1" placeholder="0">
+                </div>
+                <button type="submit" name="accion" value="ingresar" class="btn-submit">Ingresar stock</button>
+                <button type="submit" name="accion" value="restar" class="btn-submit"
+                    style="margin-top:8px;background:var(--text-muted);">Restar stock</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD HOY -->
+<div class="week-block">
+    <div class="week-title">Hoy — {{ hoy }}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_turnos_hoy }}</div>
+            <div class="stat-label">Turnos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ atendidos_hoy }}</div>
+            <div class="stat-label">Atendidos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${{ recaudacion_hoy }}</div>
+            <div class="stat-label">Recaudado</div>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD SEMANA -->
+<div class="week-block">
+    <div class="week-title">Esta semana</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_turnos_semana }}</div>
+            <div class="stat-label">Turnos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ atendidos_semana }}</div>
+            <div class="stat-label">Atendidos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${{ recaudacion_semana }}</div>
+            <div class="stat-label">Recaudado</div>
+        </div>
+    </div>
+</div>
+
+<!-- DASHBOARD MES -->
+<div class="week-block">
+    <div class="week-title">Este mes</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_turnos_mes }}</div>
+            <div class="stat-label">Turnos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ atendidos_mes }}</div>
+            <div class="stat-label">Atendidos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${{ recaudacion_mes }}</div>
+            <div class="stat-label">Recaudado</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

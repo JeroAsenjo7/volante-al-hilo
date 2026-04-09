@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block titulo %}Agenda{% endblock %}
+
+{% block contenido %}
+
+<div class="form-wrap" style="margin-bottom:20px;">
+    <div class="form-body" style="padding:14px 16px;">
+        <form method="get">
+            <div style="display:flex; gap:8px; align-items:flex-end;">
+                <div class="field" style="margin:0; flex:1;">
+                    <label>Buscar por fecha</label>
+                    <input type="date" name="fecha" value="{{ fecha_busqueda }}">
+                </div>
+                <button type="submit" class="btn-submit"
+                    style="width:auto; padding:0 16px; height:42px; margin:0;">Buscar</button>
+                {% if fecha_busqueda %}
+                <a href="{% url 'lista_turnos' %}" class="btn-back"
+                    style="width:auto; padding:0 16px; height:42px; margin:0; display:flex; align-items:center;">✕</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+    <a href="{% url 'eliminar_rango' %}" class="action-btn del"
+        style="width:auto; padding:0 14px; font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; height:32px;">
+        Eliminar rango
+    </a>
+</div>
+
+{% for clave, semana in semanas.items %}
+<div class="week-block">
+    <div class="week-title">{{ semana.titulo }}</div>
+    {% for dia_num, info in semana.dias.items %}
+    <div class="day-group">
+        <div class="day-label">{{ info.nombre }} &mdash; {{ info.fecha }}</div>
+        {% for turno in info.turnos %}
+        <div class="turno-row">
+            <div class="turno-time">{{ turno.hora|slice:":5" }}</div>
+            <div class="turno-sep"></div>
+            <div class="turno-body">
+                <div class="turno-name">{{ turno.auto }}</div>
+                <div class="turno-tags">
+                    {% if turno.hilo == 'rojo' %}<span class="badge badge-red">Rojo</span>
+                    {% else %}<span class="badge">Negro</span>{% endif %}
+                    {% if turno.cliente_de %}<span class="badge">{{ turno.cliente_de }}</span>{% endif %}
+                    {% if turno.precio %}<span class="badge badge-green">${{ turno.precio }}</span>{% endif %}
+                </div>
+            </div>
+            <form method="post" action="{% url 'toggle_atendido' turno.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="status-btn {% if turno.atendido %}done{% endif %}"
+                    title="{% if turno.atendido %}Marcar como pendiente{% else %}Marcar como atendido{% endif %}"></button>
+            </form>
+            <div class="turno-actions">
+                <a href="{% url 'editar_turno' turno.pk %}" class="action-btn" title="Editar">✏</a>
+                <a href="{% url 'eliminar_turno' turno.pk %}" class="action-btn del" title="Eliminar">✕</a>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if info.total %}
+        <div class="total-dia">Total del día: ${{ info.total }}</div>
+        {% endif %}
+
+    </div>
+    {% endfor %}
+
+    {% if semana.total %}
+    <div class="total-semana">Total semana: ${{ semana.total }}</div>
+    {% endif %}
+
+</div>
+{% empty %}
+<div class="empty">
+    <p>No hay turnos cargados.</p>
+</div>
+{% endfor %}
+
+{% endblock %}

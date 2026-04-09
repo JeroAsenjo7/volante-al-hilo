@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block titulo %}Historial{% endblock %}
+{% block fab %}{% endblock %}
+
+{% block contenido %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+    <a href="{% url 'eliminar_historial_rango' %}" class="action-btn del"
+        style="width:auto;padding:0 14px;font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;height:32px;">
+        Eliminar rango
+    </a>
+</div>
+
+{% for clave, mes in por_mes.items %}
+<div class="week-block">
+    <div class="week-title">{{ mes.titulo }}</div>
+
+    {% for r in mes.registros %}
+    <div class="turno-row">
+        <div class="turno-time">{{ r.hora|slice:":5" }}</div>
+        <div class="turno-sep"></div>
+        <div class="turno-body">
+            <div class="turno-name">{{ r.cliente_de|default:"Sin cliente" }}</div>
+            <div class="turno-tags">
+                <span class="badge" style="font-size:10px;color:var(--text-muted);">{{ r.fecha }}</span>
+                {% if r.hilo == 'rojo' %}
+                    <span class="badge badge-red">Hilo rojo</span>
+                {% else %}
+                    <span class="badge tag-negro">Hilo negro</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% empty %}
+<div class="empty">
+    <p>No hay registros en el historial.</p>
+</div>
+{% endfor %}
+
+{% endblock %}

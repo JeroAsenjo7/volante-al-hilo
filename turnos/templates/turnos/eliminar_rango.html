@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block titulo %}Eliminar por rango{% endblock %}
+{% block fab %}{% endblock %}
+
+{% block contenido %}
+<div class="form-wrap">
+    <div class="form-header">
+        <h1>Eliminar turnos por rango</h1>
+    </div>
+    <div class="form-body">
+
+        {% if messages %}
+            {% for message in messages %}
+            <div class="form-errors" {% if message.tags == 'success' %}style="background:#f0fdf4;border-color:#bbf7d0;"{% endif %}>
+                <li>{{ message }}</li>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="field">
+                <label>Desde</label>
+                <input type="date" name="desde" required>
+            </div>
+            <div class="field">
+                <label>Hasta</label>
+                <input type="date" name="hasta" required>
+            </div>
+            <button type="submit" class="btn-submit">Eliminar turnos</button>
+        </form>
+        <a href="{% url 'lista_turnos' %}" class="btn-back">Cancelar</a>
+    </div>
+</div>
+{% endblock %}

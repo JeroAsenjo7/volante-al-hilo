@@ -1,0 +1,1 @@
+web: gunicorn volante_al_hilo.wsgi --log-file -
