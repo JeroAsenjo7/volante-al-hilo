@@ -11,4 +11,7 @@ if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@email.com', 'contraseña')
     print("Superusuario creado")
 else:
-    print("Ya existe")
+    user = User.objects.get(username='admin')
+    user.set_password('contraseña')
+    user.save()
+    print("Contraseña actualizada")
