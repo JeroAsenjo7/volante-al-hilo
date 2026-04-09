@@ -1,6 +1,8 @@
 import os
 import django
 
+print("=== Corriendo create_superuser.py ===")
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'volante_al_hilo.settings')
 django.setup()
 
@@ -15,3 +17,5 @@ else:
     user.set_password('contraseña')
     user.save()
     print("Contraseña actualizada")
+
+print("=== Fin create_superuser.py ===")
