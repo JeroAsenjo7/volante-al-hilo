@@ -1,1 +1,1 @@
-web: gunicorn volante_al_hilo.wsgi --log-file -
+web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn volante_al_hilo.wsgi --log-file -
