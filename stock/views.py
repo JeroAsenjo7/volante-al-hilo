@@ -11,9 +11,9 @@ from .models import HistorialColocacion
 class StockView(View):
     def get(self, request):
     # --- STOCK ---
-    rojo, _ = Stock.objects.get_or_create(tipo='rojo', defaults={'cantidad': 0})
-    negro, _ = Stock.objects.get_or_create(tipo='negro', defaults={'cantidad': 0})
-    total_stock = rojo.cantidad + negro.cantidad
+        rojo, _ = Stock.objects.get_or_create(tipo='rojo', defaults={'cantidad': 0})
+        negro, _ = Stock.objects.get_or_create(tipo='negro', defaults={'cantidad': 0})
+        total_stock = rojo.cantidad + negro.cantidad
 
     # --- FECHAS ---
         hoy = datetime.date.today()
