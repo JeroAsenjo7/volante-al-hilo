@@ -549,11 +549,12 @@
 
 <body>
    <header>
-    <a href="{% url 'lista_turnos' %}" class="header-brand">Volante al Hilo</a>
-    <div style="display:flex;gap:16px;">
-        <a href="{% url 'stock' %}" style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:500;text-decoration:none;letter-spacing:0.06em;">Stock</a>
-        <a href="{% url 'historial' %}" style="color:rgba(255,255,255,0.75);font-size:12px;font-weight:500;text-decoration:none;letter-spacing:0.06em;">Historial</a>
-    </div>
+    <a href="{% url 'lista_turnos' %}" class="header-brand">Turnos</a>
+    <nav style="display:flex; gap:24px; align-items:center;">
+        <a href="{% url 'stock' %}" class="header-link">Stock</a>
+        <a href="{% url 'historial' %}" class="header-link">Historial</a>
+    </nav>
+    <img src="{% static 'tu-imagen.png' %}" alt="logo" style="width:36px; height:36px; object-fit:contain; margin-left:auto;">
 </header>
     <div class="page">
         {% block contenido %}{% endblock %}
