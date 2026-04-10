@@ -56,6 +56,35 @@
             text-decoration: none;
         }
 
+        .header-nav {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            margin-left: 32px;
+            flex: 1;
+        }
+
+        .header-link {
+            color: rgba(255, 255, 255, 0.70);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .header-link:hover {
+            color: var(--white);
+        }
+
+        .header-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
         .page {
             max-width: 560px;
             margin: 0 auto;
@@ -549,14 +578,14 @@
 </head>
 
 <body>
-   <header>
-    <a href="{% url 'lista_turnos' %}" class="header-brand">Turnos</a>
-    <nav style="display:flex; gap:24px; align-items:center;">
-        <a href="{% url 'stock' %}" class="header-link">Stock</a>
-        <a href="{% url 'historial' %}" class="header-link">Historial</a>
-    </nav>
-    <img src="{% static 'tu-imagen.png' %}" alt="logo" style="width:36px; height:36px; object-fit:contain; margin-left:auto;">
-</header>
+    <header>
+        <a href="{% url 'lista_turnos' %}" class="header-brand">Volante al Hilo</a>
+        <nav class="header-nav">
+            <a href="{% url 'stock' %}" class="header-link">Stock</a>
+            <a href="{% url 'historial' %}" class="header-link">Historial</a>
+        </nav>
+        <img src="{% static 'tu-imagen.png' %}" alt="logo" class="header-logo">
+    </header>
     <div class="page">
         {% block contenido %}{% endblock %}
     </div>
