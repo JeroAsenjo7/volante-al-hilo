@@ -65,80 +65,125 @@ class EliminarGastoView(View):
 class ExportarGastosExcelView(View):
     def get(self, request):
         hoy = datetime.date.today()
-        inicio_semana = hoy - datetime.timedelta(days=hoy.weekday())
-        fin_semana = inicio_semana + datetime.timedelta(days=5)
+        primer_dia_mes = hoy.replace(day=1)
+
+        # Último día del mes
+        if hoy.month == 12:
+            ultimo_dia_mes = hoy.replace(month=12, day=31)
+        else:
+            ultimo_dia_mes = hoy.replace(month=hoy.month + 1, day=1) - datetime.timedelta(days=1)
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Gastos Semana"
+        ws.title = f"{hoy.strftime('%B %Y')}"
 
-        # Estilos
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill("solid", fgColor="5E0C0E")
-        subheader_fill = PatternFill("solid", fgColor="F3F3F3")
+        subheader_fill = PatternFill("solid", fgColor="F5E6E6")
         center = Alignment(horizontal="center")
 
-        # Título
+        # Título del mes
         ws.merge_cells("A1:E1")
-        ws["A1"] = f"Resumen semanal: {inicio_semana.strftime('%d/%m/%Y')} — {fin_semana.strftime('%d/%m/%Y')}"
-        ws["A1"].font = Font(bold=True, color="FFFFFF", size=12)
+        ws["A1"] = f"Resumen mensual: {hoy.strftime('%B %Y').capitalize()}"
+        ws["A1"].font = Font(bold=True, color="FFFFFF", size=13)
         ws["A1"].fill = header_fill
         ws["A1"].alignment = center
 
-        # Encabezados
-        headers = ["Fecha", "Descripción", "Monto gasto", "Recaudado del día", "Neto del día"]
-        for col, h in enumerate(headers, 1):
-            cell = ws.cell(row=2, column=col, value=h)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill("solid", fgColor="F5E6E6")
-            cell.alignment = center
+        row = 2
+        total_mes_recaudado = 0
+        total_mes_gastos = 0
+        num_semana = 1
 
-        # Datos por día
-        row = 3
-        total_semana_recaudado = 0
-        total_semana_gastos = 0
+        # Iterar semana por semana dentro del mes
+        fecha_actual = primer_dia_mes
+        while fecha_actual <= ultimo_dia_mes:
+            # Inicio y fin de esta semana dentro del mes
+            inicio_semana = fecha_actual
+            # Fin de semana = próximo lunes - 1 día, sin pasar del mes
+            dias_hasta_domingo = 6 - fecha_actual.weekday()
+            fin_semana = min(fecha_actual + datetime.timedelta(days=dias_hasta_domingo), ultimo_dia_mes)
 
-        fecha_actual = inicio_semana
-        while fecha_actual <= fin_semana:
-            gastos_dia = Gasto.objects.filter(fecha=fecha_actual)
-            recaudado_dia = Turno.objects.filter(
-                fecha=fecha_actual, atendido=True
-            ).aggregate(total=Sum('precio'))['total'] or 0
-            total_gastos_dia = gastos_dia.aggregate(total=Sum('monto'))['total'] or 0
-            neto_dia = recaudado_dia - total_gastos_dia
+            # Encabezado de semana
+            ws.merge_cells(f"A{row}:E{row}")
+            ws[f"A{row}"] = f"Semana {num_semana}  ({inicio_semana.strftime('%d/%m')} — {fin_semana.strftime('%d/%m')})"
+            ws[f"A{row}"].font = Font(bold=True, color="FFFFFF")
+            ws[f"A{row}"].fill = PatternFill("solid", fgColor="7a1012")
+            ws[f"A{row}"].alignment = center
+            row += 1
 
-            total_semana_recaudado += recaudado_dia
-            total_semana_gastos += total_gastos_dia
+            # Encabezados columnas
+            headers = ["Fecha", "Descripción", "Monto gasto", "Recaudado del día", "Neto del día"]
+            for col, h in enumerate(headers, 1):
+                cell = ws.cell(row=row, column=col, value=h)
+                cell.font = Font(bold=True)
+                cell.fill = subheader_fill
+                cell.alignment = center
+            row += 1
 
-            if gastos_dia.exists():
-                first = True
-                for gasto in gastos_dia:
-                    ws.cell(row=row, column=1, value=fecha_actual.strftime('%d/%m/%Y') if first else "")
-                    ws.cell(row=row, column=2, value=gasto.descripcion)
-                    ws.cell(row=row, column=3, value=float(gasto.monto))
-                    ws.cell(row=row, column=4, value=float(recaudado_dia) if first else "")
-                    ws.cell(row=row, column=5, value=float(neto_dia) if first else "")
+            total_semana_recaudado = 0
+            total_semana_gastos = 0
+
+            dia = inicio_semana
+            while dia <= fin_semana:
+                gastos_dia = Gasto.objects.filter(fecha=dia)
+                recaudado_dia = Turno.objects.filter(
+                    fecha=dia, atendido=True
+                ).aggregate(total=Sum('precio'))['total'] or 0
+                total_gastos_dia = gastos_dia.aggregate(total=Sum('monto'))['total'] or 0
+                neto_dia = recaudado_dia - total_gastos_dia
+
+                total_semana_recaudado += recaudado_dia
+                total_semana_gastos += total_gastos_dia
+
+                if gastos_dia.exists():
+                    first = True
+                    for gasto in gastos_dia:
+                        ws.cell(row=row, column=1, value=dia.strftime('%d/%m/%Y') if first else "")
+                        ws.cell(row=row, column=2, value=gasto.descripcion)
+                        ws.cell(row=row, column=3, value=float(gasto.monto))
+                        ws.cell(row=row, column=4, value=float(recaudado_dia) if first else "")
+                        ws.cell(row=row, column=5, value=float(neto_dia) if first else "")
+                        row += 1
+                        first = False
+                else:
+                    ws.cell(row=row, column=1, value=dia.strftime('%d/%m/%Y'))
+                    ws.cell(row=row, column=2, value="Sin gastos")
+                    ws.cell(row=row, column=3, value=0)
+                    ws.cell(row=row, column=4, value=float(recaudado_dia))
+                    ws.cell(row=row, column=5, value=float(neto_dia))
                     row += 1
-                    first = False
-            else:
-                ws.cell(row=row, column=1, value=fecha_actual.strftime('%d/%m/%Y'))
-                ws.cell(row=row, column=2, value="Sin gastos")
-                ws.cell(row=row, column=3, value=0)
-                ws.cell(row=row, column=4, value=float(recaudado_dia))
-                ws.cell(row=row, column=5, value=float(neto_dia))
-                row += 1
 
-            fecha_actual += datetime.timedelta(days=1)
+                dia += datetime.timedelta(days=1)
 
-        # Totales semana
-        ws.cell(row=row, column=1, value="TOTAL SEMANA").font = Font(bold=True)
-        ws.cell(row=row, column=3, value=float(total_semana_gastos)).font = Font(bold=True)
-        ws.cell(row=row, column=4, value=float(total_semana_recaudado)).font = Font(bold=True)
-        ws.cell(row=row, column=5, value=float(total_semana_recaudado - total_semana_gastos)).font = Font(bold=True)
+            # Total semana
+            ws.cell(row=row, column=1, value=f"Total Semana {num_semana}")
+            ws.cell(row=row, column=3, value=float(total_semana_gastos))
+            ws.cell(row=row, column=4, value=float(total_semana_recaudado))
+            ws.cell(row=row, column=5, value=float(total_semana_recaudado - total_semana_gastos))
+            for col in range(1, 6):
+                ws.cell(row=row, column=col).font = Font(bold=True)
+                ws.cell(row=row, column=col).fill = subheader_fill
+            row += 2  # fila en blanco entre semanas
+
+            total_mes_recaudado += total_semana_recaudado
+            total_mes_gastos += total_semana_gastos
+
+            fecha_actual = fin_semana + datetime.timedelta(days=1)
+            num_semana += 1
+
+        # Total mes
+        ws.merge_cells(f"A{row}:B{row}")
+        ws[f"A{row}"] = "TOTAL DEL MES"
+        ws[f"A{row}"].font = Font(bold=True, color="FFFFFF")
+        ws[f"A{row}"].fill = header_fill
+        ws[f"A{row}"].alignment = center
+        ws.cell(row=row, column=3, value=float(total_mes_gastos)).font = Font(bold=True, color="FFFFFF")
+        ws.cell(row=row, column=4, value=float(total_mes_recaudado)).font = Font(bold=True, color="FFFFFF")
+        ws.cell(row=row, column=5, value=float(total_mes_recaudado - total_mes_gastos)).font = Font(bold=True, color="FFFFFF")
         for col in range(1, 6):
-            ws.cell(row=row, column=col).fill = PatternFill("solid", fgColor="F5E6E6")
+            ws.cell(row=row, column=col).fill = header_fill
 
-        # Ancho de columnas
+        # Ancho columnas
         ws.column_dimensions['A'].width = 16
         ws.column_dimensions['B'].width = 30
         ws.column_dimensions['C'].width = 16
@@ -148,6 +193,6 @@ class ExportarGastosExcelView(View):
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = f'attachment; filename="gastos_semana_{hoy}.xlsx"'
+        response['Content-Disposition'] = f'attachment; filename="gastos_{hoy.strftime("%B_%Y")}.xlsx"'
         wb.save(response)
         return response
