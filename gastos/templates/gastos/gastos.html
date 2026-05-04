@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Gastos — Volante al Hilo{% endblock %}
+
+{% block contenido %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+    <a href="{% url 'exportar_gastos' %}" class="filtro-btn active" style="display:flex;align-items:center;gap:6px;">
+        ↓ Descargar semana
+    </a>
+</div>
+<!-- Filtro por fecha -->
+<div style="margin-bottom:24px;">
+    <form method="get" style="display:flex;gap:10px;align-items:center;">
+        <input type="date" name="fecha" value="{{ fecha_filtro }}"
+            style="height:38px;padding:0 12px;border:1px solid var(--border);border-radius:5px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--white);outline:none;">
+        <button type="submit" class="filtro-btn active">Ver</button>
+        <a href="{% url 'gastos' %}" class="filtro-btn">Hoy</a>
+    </form>
+</div>
+
+<!-- Resumen -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;">
+    <div class="stat-card">
+        <div class="stat-value">${{ recaudacion_hoy }}</div>
+        <div class="stat-label">Recaudado</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:#e53e3e;">${{ total_gastos }}</div>
+        <div class="stat-label">Gastos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:{% if neto >= 0 %}#166534{% else %}#e53e3e{% endif %};">${{ neto }}</div>
+        <div class="stat-label">Neto</div>
+    </div>
+</div>
+
+<!-- Formulario (solo para hoy) -->
+{% if fecha_filtro == hoy %}
+<div class="form-wrap" style="margin-bottom:28px;">
+    <div class="form-header">
+        <h1>Registrar gasto</h1>
+    </div>
+    <div class="form-body">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="form-errors" style="{% if 'success' in message.tags %}background:#f0fdf4;border-color:#bbf7d0;{% endif %}">
+                    <li style="{% if 'success' in message.tags %}color:#166534;{% endif %}">{{ message }}</li>
+                </div>
+            {% endfor %}
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="field">
+                <label>Descripción</label>
+                <input type="text" name="descripcion" placeholder="Ej: Materiales, alquiler..." required>
+            </div>
+            <div class="field">
+                <label>Monto</label>
+                <input type="number" name="monto" placeholder="0" min="0" step="0.01" required>
+            </div>
+            <button type="submit" class="btn-submit">Registrar gasto</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Lista de gastos -->
+{% if gastos_hoy %}
+<div style="margin-bottom:8px;">
+    <p style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);padding:0 4px 8px;border-bottom:1px solid var(--border);">
+        Gastos del {{ fecha_filtro }}
+    </p>
+</div>
+{% for gasto in gastos_hoy %}
+<div class="turno-row">
+    <div class="turno-body">
+        <div class="turno-name">{{ gasto.descripcion }}</div>
+        <div class="turno-tags">
+            <span class="badge badge-red">${{ gasto.monto }}</span>
+        </div>
+    </div>
+    {% if fecha_filtro == hoy %}
+    <div class="turno-actions">
+        <form method="post" action="{% url 'eliminar_gasto' gasto.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="action-btn del" title="Eliminar">✕</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">
+    <p>No hay gastos registrados para esta fecha.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block fab %}{% endblock %}
