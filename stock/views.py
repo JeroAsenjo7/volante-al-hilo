@@ -8,21 +8,27 @@ from django.db.models import Sum, Count
 from collections import defaultdict
 from .models import HistorialColocacion
 
+PRECIO_POR_CLIENTE = {
+    'Cayla': 10000,
+    'Bauza': 35000,
+    'Tomi': 15000,
+}
+
 class StockView(View):
     def get(self, request):
-    # --- STOCK ---
+        # --- STOCK ---
         rojo, _ = Stock.objects.get_or_create(tipo='rojo', defaults={'cantidad': 0})
         negro, _ = Stock.objects.get_or_create(tipo='negro', defaults={'cantidad': 0})
         total_stock = rojo.cantidad + negro.cantidad
 
-    # --- FECHAS ---
+        # --- FECHAS ---
         hoy = datetime.date.today()
 
-    # Semana (lunes a sábado)
+        # Semana (lunes a sábado)
         inicio_semana = hoy - datetime.timedelta(days=hoy.weekday())
         fin_semana = inicio_semana + datetime.timedelta(days=5)
 
-    # --- DASHBOARD DÍA ---
+        # --- DASHBOARD DÍA ---
         turnos_hoy = Turno.objects.filter(fecha=hoy)
         total_turnos_hoy = turnos_hoy.count()
         atendidos_hoy = turnos_hoy.filter(atendido=True).count()
@@ -30,7 +36,7 @@ class StockView(View):
             total=Sum('precio')
         )['total'] or 0
 
-    # --- DASHBOARD SEMANA ---
+        # --- DASHBOARD SEMANA ---
         turnos_semana = Turno.objects.filter(
             fecha__gte=inicio_semana,
             fecha__lte=fin_semana
@@ -41,7 +47,7 @@ class StockView(View):
             total=Sum('precio')
         )['total'] or 0
 
-    # --- DASHBOARD MES ---
+        # --- DASHBOARD MES ---
         turnos_mes = Turno.objects.filter(
             fecha__year=hoy.year,
             fecha__month=hoy.month
@@ -51,6 +57,57 @@ class StockView(View):
         recaudacion_mes = turnos_mes.filter(atendido=True).aggregate(
             total=Sum('precio')
         )['total'] or 0
+
+        # --- CLIENTES DÍA ---
+        clientes_hoy_raw = (
+            Turno.objects.filter(fecha=hoy, atendido=True)
+            .values('cliente_de')
+            .annotate(turnos=Count('id'))
+            .order_by('cliente_de')
+        )
+        clientes_hoy = [
+            {
+                'nombre': c['cliente_de'] or 'Sin cliente',
+                'turnos': c['turnos'],
+                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
+            }
+            for c in clientes_hoy_raw
+        ]
+        total_clientes_hoy = sum(c['total'] for c in clientes_hoy)
+
+        # --- CLIENTES SEMANA ---
+        clientes_semana_raw = (
+            Turno.objects.filter(fecha__gte=inicio_semana, fecha__lte=fin_semana, atendido=True)
+            .values('cliente_de')
+            .annotate(turnos=Count('id'))
+            .order_by('cliente_de')
+        )
+        clientes_semana = [
+            {
+                'nombre': c['cliente_de'] or 'Sin cliente',
+                'turnos': c['turnos'],
+                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
+            }
+            for c in clientes_semana_raw
+        ]
+        total_clientes_semana = sum(c['total'] for c in clientes_semana)
+
+        # --- CLIENTES MES ---
+        clientes_mes_raw = (
+            Turno.objects.filter(fecha__year=hoy.year, fecha__month=hoy.month, atendido=True)
+            .values('cliente_de')
+            .annotate(turnos=Count('id'))
+            .order_by('cliente_de')
+        )
+        clientes_mes = [
+            {
+                'nombre': c['cliente_de'] or 'Sin cliente',
+                'turnos': c['turnos'],
+                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
+            }
+            for c in clientes_mes_raw
+        ]
+        total_clientes_mes = sum(c['total'] for c in clientes_mes)
 
         return render(request, 'stock/stock.html', {
             'rojo': rojo,
@@ -72,6 +129,14 @@ class StockView(View):
             'total_turnos_mes': total_turnos_mes,
             'atendidos_mes': atendidos_mes,
             'recaudacion_mes': recaudacion_mes,
+
+            # Clientes
+            'clientes_hoy': clientes_hoy,
+            'total_clientes_hoy': total_clientes_hoy,
+            'clientes_semana': clientes_semana,
+            'total_clientes_semana': total_clientes_semana,
+            'clientes_mes': clientes_mes,
+            'total_clientes_mes': total_clientes_mes,
         })
 
     def post(self, request):
@@ -106,7 +171,8 @@ class StockView(View):
                 messages.success(request, f'Se restaron {cantidad} unidades de hilo {tipo}.')
 
         return redirect('stock')
-    
+
+
 class HistorialView(View):
     def get(self, request):
         from .models import HistorialColocacion
@@ -134,7 +200,8 @@ class HistorialView(View):
         return render(request, 'stock/historial.html', {
             'por_mes': por_mes_ordenado,
         })
-    
+
+
 class EliminarHistorialRangoView(View):
     def get(self, request):
         return render(request, 'stock/eliminar_historial_rango.html')

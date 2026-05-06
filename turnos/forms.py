@@ -2,6 +2,12 @@ from django import forms
 from .models import Turno
 import datetime
 
+CLIENTES = [
+    ('', '— Seleccionar —'),
+    ('Bauza', 'Bauza'),
+    ('Cayla', 'Cayla'),
+    ('Tomi', 'Tomi'),
+]
 
 class TurnoForm(forms.ModelForm):
 
@@ -11,10 +17,10 @@ class TurnoForm(forms.ModelForm):
         widgets = {
             'fecha': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'precio': forms.NumberInput(attrs={
-            'step': '0.01',
-            'min': '0',
-            'placeholder': '0.00'
-        }),
+                'step': '0.01',
+                'min': '0',
+                'placeholder': '0.00'
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -36,4 +42,10 @@ class TurnoForm(forms.ModelForm):
             choices=horarios,
             coerce=lambda v: datetime.time.fromisoformat(v),
             label="Hora",
+        )
+
+        self.fields['cliente_de'] = forms.ChoiceField(
+            choices=CLIENTES,
+            required=False,
+            label="Cliente de",
         )
