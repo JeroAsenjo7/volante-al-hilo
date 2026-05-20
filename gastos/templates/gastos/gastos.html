@@ -6,9 +6,10 @@
 
 <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
     <a href="{% url 'exportar_gastos' %}" class="filtro-btn active" style="display:flex;align-items:center;gap:6px;">
-        ↓ Descargar semana
+        ↓ Descargar mes
     </a>
 </div>
+
 <!-- Filtro por fecha -->
 <div style="margin-bottom:24px;">
     <form method="get" style="display:flex;gap:10px;align-items:center;">
@@ -35,8 +36,7 @@
     </div>
 </div>
 
-<!-- Formulario (solo para hoy) -->
-{% if fecha_filtro == hoy %}
+<!-- Formulario (siempre visible) -->
 <div class="form-wrap" style="margin-bottom:28px;">
     <div class="form-header">
         <h1>Registrar gasto</h1>
@@ -52,6 +52,10 @@
         <form method="post">
             {% csrf_token %}
             <div class="field">
+                <label>Fecha</label>
+                {{ form.fecha }}
+            </div>
+            <div class="field">
                 <label>Descripción</label>
                 <input type="text" name="descripcion" placeholder="Ej: Materiales, alquiler..." required>
             </div>
@@ -63,7 +67,6 @@
         </form>
     </div>
 </div>
-{% endif %}
 
 <!-- Lista de gastos -->
 {% if gastos_hoy %}
@@ -80,14 +83,12 @@
             <span class="badge badge-red">${{ gasto.monto }}</span>
         </div>
     </div>
-    {% if fecha_filtro == hoy %}
     <div class="turno-actions">
         <form method="post" action="{% url 'eliminar_gasto' gasto.pk %}">
             {% csrf_token %}
             <button type="submit" class="action-btn del" title="Eliminar">✕</button>
         </form>
     </div>
-    {% endif %}
 </div>
 {% endfor %}
 {% else %}

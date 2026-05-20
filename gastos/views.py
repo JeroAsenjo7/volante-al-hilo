@@ -10,6 +10,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import datetime
 
+
 PRECIO_POR_CLIENTE = {
     'Cayla': 10000,
     'Bauza': 35000,
@@ -47,12 +48,9 @@ class GastosView(View):
         })
 
     def post(self, request):
-        hoy = datetime.date.today()
         form = GastoForm(request.POST)
         if form.is_valid():
-            gasto = form.save(commit=False)
-            gasto.fecha = hoy
-            gasto.save()
+            form.save()
             messages.success(request, 'Gasto registrado.')
         else:
             messages.error(request, 'Completá todos los campos correctamente.')
