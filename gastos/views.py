@@ -9,6 +9,7 @@ from django.http import HttpResponse
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 import datetime
+from stock.views import calcular_colocaciones
 
 
 PRECIO_POR_CLIENTE = {
@@ -66,6 +67,7 @@ class EliminarGastoView(View):
 
 
 class ExportarGastosExcelView(View):
+    
     def get(self, request):
         hoy = datetime.date.today()
         primer_dia_mes = hoy.replace(day=1)
@@ -184,9 +186,10 @@ class ExportarGastosExcelView(View):
         ws.column_dimensions['E'].width = 16
 
         # ─── HOJA 2: COLOCACIONES ───
+        
         ws2 = wb.create_sheet(title="Colocaciones")
 
-        ws2.merge_cells("A1:D1")
+        ws2.merge_cells("A1:E1")
         ws2["A1"] = f"Colocaciones del mes: {hoy.strftime('%B %Y').capitalize()}"
         ws2["A1"].font = Font(bold=True, color="FFFFFF", size=13)
         ws2["A1"].fill = header_fill
@@ -204,47 +207,77 @@ class ExportarGastosExcelView(View):
             fin_semana = min(fecha_actual + datetime.timedelta(days=dias_hasta_domingo), ultimo_dia_mes)
 
             # Encabezado semana
-            ws2.merge_cells(f"A{row2}:D{row2}")
+            ws2.merge_cells(f"A{row2}:E{row2}")
             ws2[f"A{row2}"] = f"Semana {num_semana}  ({inicio_semana.strftime('%d/%m')} — {fin_semana.strftime('%d/%m')})"
             ws2[f"A{row2}"].font = Font(bold=True, color="FFFFFF")
             ws2[f"A{row2}"].fill = PatternFill("solid", fgColor="7a1012")
             ws2[f"A{row2}"].alignment = center
             row2 += 1
 
-            # Encabezados columnas
-            for col, h in enumerate(["Cliente", "Colocaciones", "Total $", ""], 1):
+            # Encabezados columnas detalle
+            for col, h in enumerate(["Fecha", "Cliente", "Colocaciones", "Total $", ""], 1):
                 cell = ws2.cell(row=row2, column=col, value=h)
                 cell.font = Font(bold=True)
                 cell.fill = subheader_fill
                 cell.alignment = center
             row2 += 1
 
-            clientes_semana = (
-                Turno.objects.filter(fecha__gte=inicio_semana, fecha__lte=fin_semana, atendido=True)
-                .values('cliente_de')
-                .annotate(turnos=Count('id'))
-                .order_by('cliente_de')
-            )
-
             total_semana_turnos = 0
             total_semana_colocaciones = 0
 
-            for c in clientes_semana:
-                nombre = c['cliente_de'] or 'Sin cliente'
-                turnos = c['turnos']
-                total = turnos * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0)
-                ws2.cell(row=row2, column=1, value=nombre)
-                ws2.cell(row=row2, column=2, value=turnos)
-                ws2.cell(row=row2, column=3, value=float(total))
-                row2 += 1
-                total_semana_turnos += turnos
-                total_semana_colocaciones += total
+            # Detalle por día
+            dia = inicio_semana
+            while dia <= fin_semana:
+                turnos_dia = Turno.objects.filter(fecha=dia, atendido=True)
+                colocaciones_dia, _ = calcular_colocaciones(turnos_dia)
 
-            # Total semana
-            ws2.cell(row=row2, column=1, value=f"Total Semana {num_semana}")
-            ws2.cell(row=row2, column=2, value=total_semana_turnos)
-            ws2.cell(row=row2, column=3, value=float(total_semana_colocaciones))
-            for col in range(1, 4):
+                first = True
+                hay_datos = False
+                for c in colocaciones_dia:
+                    if c['turnos'] == 0 and c['total'] == 0:
+                        continue
+                    hay_datos = True
+                    ws2.cell(row=row2, column=1, value=dia.strftime('%d/%m/%Y') if first else "")
+                    ws2.cell(row=row2, column=2, value=c['nombre'])
+                    ws2.cell(row=row2, column=3, value=c['turnos'])
+                    ws2.cell(row=row2, column=4, value=float(c['total']))
+                    row2 += 1
+                    first = False
+
+                if not hay_datos:
+                    ws2.cell(row=row2, column=1, value=dia.strftime('%d/%m/%Y'))
+                    ws2.cell(row=row2, column=2, value="Sin colocaciones")
+                    ws2.cell(row=row2, column=3, value=0)
+                    ws2.cell(row=row2, column=4, value=0)
+                    row2 += 1
+
+                dia += datetime.timedelta(days=1)
+
+            # Resumen semana
+            turnos_semana_qs = Turno.objects.filter(fecha__gte=inicio_semana, fecha__lte=fin_semana, atendido=True)
+            resumen_semana, _ = calcular_colocaciones(turnos_semana_qs)
+
+            ws2.merge_cells(f"A{row2}:E{row2}")
+            ws2[f"A{row2}"] = f"Resumen Semana {num_semana}"
+            ws2[f"A{row2}"].font = Font(bold=True)
+            ws2[f"A{row2}"].fill = subheader_fill
+            ws2[f"A{row2}"].alignment = center
+            row2 += 1
+
+            for c in resumen_semana:
+                ws2.cell(row=row2, column=2, value=c['nombre'])
+                ws2.cell(row=row2, column=3, value=c['turnos'])
+                ws2.cell(row=row2, column=4, value=float(c['total']))
+                for col in range(1, 5):
+                    ws2.cell(row=row2, column=col).font = Font(bold=True)
+                row2 += 1
+                total_semana_turnos += c['turnos']
+                total_semana_colocaciones += c['total']
+
+            ws2.cell(row=row2, column=2, value="TOTAL")
+            ws2.cell(row=row2, column=3, value=total_semana_turnos)
+            ws2.cell(row=row2, column=4, value=float(total_semana_colocaciones))
+            for col in range(1, 5):
                 ws2.cell(row=row2, column=col).font = Font(bold=True)
                 ws2.cell(row=row2, column=col).fill = subheader_fill
             row2 += 2
@@ -254,18 +287,37 @@ class ExportarGastosExcelView(View):
             fecha_actual = fin_semana + datetime.timedelta(days=1)
             num_semana += 1
 
-        # Total mes
-        ws2.merge_cells(f"A{row2}:A{row2}")
-        ws2.cell(row=row2, column=1, value="TOTAL DEL MES")
-        ws2.cell(row=row2, column=2, value=total_mes_turnos)
-        ws2.cell(row=row2, column=3, value=float(total_mes_colocaciones))
-        for col in range(1, 4):
+        # Resumen mes
+        turnos_mes_qs = Turno.objects.filter(fecha__year=hoy.year, fecha__month=hoy.month, atendido=True)
+        resumen_mes, _ = calcular_colocaciones(turnos_mes_qs)
+
+        ws2.merge_cells(f"A{row2}:E{row2}")
+        ws2[f"A{row2}"] = "RESUMEN DEL MES"
+        ws2[f"A{row2}"].font = Font(bold=True, color="FFFFFF")
+        ws2[f"A{row2}"].fill = header_fill
+        ws2[f"A{row2}"].alignment = center
+        row2 += 1
+
+        for c in resumen_mes:
+            ws2.cell(row=row2, column=2, value=c['nombre'])
+            ws2.cell(row=row2, column=3, value=c['turnos'])
+            ws2.cell(row=row2, column=4, value=float(c['total']))
+            for col in range(1, 5):
+                ws2.cell(row=row2, column=col).font = Font(bold=True, color="FFFFFF")
+                ws2.cell(row=row2, column=col).fill = header_fill
+            row2 += 1
+
+        ws2.cell(row=row2, column=2, value="TOTAL")
+        ws2.cell(row=row2, column=3, value=total_mes_turnos)
+        ws2.cell(row=row2, column=4, value=float(total_mes_colocaciones))
+        for col in range(1, 5):
             ws2.cell(row=row2, column=col).font = Font(bold=True, color="FFFFFF")
             ws2.cell(row=row2, column=col).fill = header_fill
 
         ws2.column_dimensions['A'].width = 16
         ws2.column_dimensions['B'].width = 16
         ws2.column_dimensions['C'].width = 16
+        ws2.column_dimensions['D'].width = 16
 
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

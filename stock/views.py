@@ -8,11 +8,46 @@ from django.db.models import Sum, Count
 from collections import defaultdict
 from .models import HistorialColocacion
 
-PRECIO_POR_CLIENTE = {
-    'Cayla': 10000,
-    'Bauza': 35000,
-    'Tomi': 15000,
+# Tabla de pagos: pago_a → {agendado_por → monto}
+PAGOS = {
+    'Cayla': {'Cayla': 6000, 'Bauza': 6000, 'Tomi': 6000},
+    'Tomi':  {'Cayla': 5000, 'Bauza': 5000, 'Tomi': 10000},
+    'Bauza': {'Cayla': 29000, 'Tomi': 15000, 'Bauza': 35000},
 }
+
+def calcular_colocaciones(turnos_qs):
+    resultados = {
+        'Cayla': {'nombre': 'Cayla', 'turnos': 0, 'total': 0},
+        'Tomi':  {'nombre': 'Tomi',  'turnos': 0, 'total': 0},
+        'Bauza': {'nombre': 'Bauza', 'turnos': 0, 'total': 0},
+    }
+
+    for turno in turnos_qs.values('cliente_de'):
+        agendado_por = turno['cliente_de']
+        if not agendado_por:
+            continue
+
+        if agendado_por in resultados:
+            resultados[agendado_por]['turnos'] += 1
+
+        # Cayla: solo cobra si el turno es de Cayla
+        if agendado_por == 'Cayla':
+            resultados['Cayla']['total'] += 6000
+
+        # Tomi: cobra 10000 si es de Tomi, 5000 si es de cualquier otro
+        if agendado_por == 'Tomi':
+            resultados['Tomi']['total'] += 10000
+        else:
+            resultados['Tomi']['total'] += 5000
+
+        # Bauza: cobra según quién agendó
+        pagos_bauza = {'Cayla': 29000, 'Tomi': 15000, 'Bauza': 35000}
+        resultados['Bauza']['total'] += pagos_bauza.get(agendado_por, 0)
+
+    lista = list(resultados.values())
+    total = sum(c['total'] for c in lista)
+    return lista, total
+
 
 class StockView(View):
     def get(self, request):
@@ -59,55 +94,16 @@ class StockView(View):
         )['total'] or 0
 
         # --- CLIENTES DÍA ---
-        clientes_hoy_raw = (
-            Turno.objects.filter(fecha=hoy, atendido=True)
-            .values('cliente_de')
-            .annotate(turnos=Count('id'))
-            .order_by('cliente_de')
-        )
-        clientes_hoy = [
-            {
-                'nombre': c['cliente_de'] or 'Sin cliente',
-                'turnos': c['turnos'],
-                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
-            }
-            for c in clientes_hoy_raw
-        ]
-        total_clientes_hoy = sum(c['total'] for c in clientes_hoy)
+        turnos_hoy_atendidos = Turno.objects.filter(fecha=hoy, atendido=True)
+        clientes_hoy, total_clientes_hoy = calcular_colocaciones(turnos_hoy_atendidos)
 
         # --- CLIENTES SEMANA ---
-        clientes_semana_raw = (
-            Turno.objects.filter(fecha__gte=inicio_semana, fecha__lte=fin_semana, atendido=True)
-            .values('cliente_de')
-            .annotate(turnos=Count('id'))
-            .order_by('cliente_de')
-        )
-        clientes_semana = [
-            {
-                'nombre': c['cliente_de'] or 'Sin cliente',
-                'turnos': c['turnos'],
-                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
-            }
-            for c in clientes_semana_raw
-        ]
-        total_clientes_semana = sum(c['total'] for c in clientes_semana)
+        turnos_semana_atendidos = Turno.objects.filter(fecha__gte=inicio_semana, fecha__lte=fin_semana, atendido=True)
+        clientes_semana, total_clientes_semana = calcular_colocaciones(turnos_semana_atendidos)
 
         # --- CLIENTES MES ---
-        clientes_mes_raw = (
-            Turno.objects.filter(fecha__year=hoy.year, fecha__month=hoy.month, atendido=True)
-            .values('cliente_de')
-            .annotate(turnos=Count('id'))
-            .order_by('cliente_de')
-        )
-        clientes_mes = [
-            {
-                'nombre': c['cliente_de'] or 'Sin cliente',
-                'turnos': c['turnos'],
-                'total': c['turnos'] * PRECIO_POR_CLIENTE.get(c['cliente_de'], 0),
-            }
-            for c in clientes_mes_raw
-        ]
-        total_clientes_mes = sum(c['total'] for c in clientes_mes)
+        turnos_mes_atendidos = Turno.objects.filter(fecha__year=hoy.year, fecha__month=hoy.month, atendido=True)
+        clientes_mes, total_clientes_mes = calcular_colocaciones(turnos_mes_atendidos)
 
         return render(request, 'stock/stock.html', {
             'rojo': rojo,
